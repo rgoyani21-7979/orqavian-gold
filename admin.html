@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#111318">
+<title>Orqavian Admin</title>
+<link rel="icon" href="favicon.png">
+<style>
+:root{--carbon:#111318;--white:#FAFBFC;--blue:#245CFF;--line:#E4E8EE;--buy:#0E8F5B;--sell:#C2362B;--ink2:#5B6270}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--white);color:var(--carbon);padding:0 0 40px}
+header{background:var(--carbon);color:#fff;padding:calc(env(safe-area-inset-top) + 14px) 16px 14px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+header a{color:#D4D9E1;font-size:12px;font-weight:500}
+main{max-width:520px;margin:0 auto;padding:14px}
+.sides{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.sides button{padding:16px;border-radius:14px;border:2px solid var(--line);background:#fff;font-size:18px;font-weight:800;color:var(--ink2)}
+.sides button.on.BUY{background:var(--buy);border-color:var(--buy);color:#fff}
+.sides button.on.SELL{background:var(--sell);border-color:var(--sell);color:#fff}
+label{display:block;font-size:11px;font-weight:700;color:var(--ink2);margin:10px 0 4px}
+input,textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:13px;font-size:18px;background:#fff;font-variant-numeric:tabular-nums}
+textarea{font-size:15px;min-height:60px;resize:vertical}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:14px}
+.box h3{font-size:12px;color:var(--ink2);margin-bottom:6px}
+.box input{font-size:15px;padding:10px}
+.row2{display:flex;gap:8px;margin-top:10px}
+.btn{flex:1;padding:14px;border-radius:12px;border:0;font-weight:700;font-size:15px}
+.btn.sec{background:#EEF0F4;color:var(--carbon)}
+.btn.main{background:var(--blue);color:#fff;font-size:17px;padding:17px}
+.btn:disabled{opacity:.5}
+#msg{margin-top:12px;font-size:14px;font-weight:600;min-height:20px}
+.ok{color:var(--buy)}.err{color:var(--sell)}
+.item{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px;font-size:13px}
+.item .h{display:flex;justify-content:space-between;font-weight:700;margin-bottom:6px}
+.item .b{display:flex;gap:6px;flex-wrap:wrap}
+.item .b button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 11px;font-size:12px;font-weight:600}
+.hide{display:none}
+</style></head>
+<body>
+<header><span>Orqavian Gold - Admin</span><a href="index.html">View app</a></header>
+<main>
+<div id="login">
+  <label>ADMIN KEY</label><input id="key" type="password" placeholder="Enter admin key" autocomplete="current-password">
+  <div class="row2"><button class="btn main" id="go">Unlock</button></div>
+  <div id="lmsg" class="err" style="margin-top:10px;font-size:14px"></div>
+</div>
+
+<div id="panel" class="hide">
+  <div class="sides"><button class="SELL on" data-s="SELL">SELL</button><button class="BUY" data-s="BUY">BUY</button></div>
+  <label>ENTRY</label><input id="entry" inputmode="decimal" placeholder="e.g. entry price">
+  <div class="g3">
+    <div><label>SL</label><input id="sl" inputmode="decimal"></div>
+    <div><label>TP1</label><input id="tp1" inputmode="decimal"></div>
+    <div><label>TP2</label><input id="tp2" inputmode="decimal"></div>
+  </div>
+  <div class="box"><h3>QUICK FILL - your own distances in dollars from entry (saved on this device)</h3>
+    <div class="g3"><input id="dsl" inputmode="decimal" placeholder="SL dist"><input id="dt1" inputmode="decimal" placeholder="TP1 dist"><input id="dt2" inputmode="decimal" placeholder="TP2 dist"></div>
+    <div class="row2"><button class="btn sec" id="fill">Fill SL / TP from entry</button></div>
+  </div>
+  <label>NOTE (optional)</label><textarea id="note" maxlength="280"></textarea>
+  <div class="row2"><button class="btn sec" id="clear">Clear</button><button class="btn main" id="send">Send to app + Telegram</button></div>
+  <div id="msg"></div>
+  <div class="box"><h3>RECENT SIGNALS - tap to update status</h3><div id="recent"></div></div>
+  <div class="row2"><button class="btn sec" id="logout">Lock</button></div>
+</div>
+</main>
+<script src="config.js"></script>
+<script>
+const $=s=>document.querySelector(s), API=(window.ORQ_API||'').replace(/\/$/,'');
+let side='SELL', key=localStorage.getItem('og_admin')||'';
+const H=()=>({'Content-Type':'application/json','X-Admin-Key':key});
+const say=(t,c)=>{const m=$('#msg');m.textContent=t;m.className=c||''};
+async function api(p,body){const r=await fetch(API+p,{method:'POST',headers:H(),body:JSON.stringify(body||{})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('Error '+r.status));return j}
+async function unlock(k){
+  if(!API){$('#lmsg').textContent='Backend not connected yet (config.js is empty).';return}
+  key=k;try{await api('/api/auth');localStorage.setItem('og_admin',key);$('#login').classList.add('hide');$('#panel').classList.remove('hide');$('#entry').focus();recent()}
+  catch(e){$('#lmsg').textContent=e.message;key=''}
+}
+$('#go').onclick=()=>unlock($('#key').value.trim());
+$('#key').addEventListener('keydown',e=>{if(e.key==='Enter')$('#go').click()});
+$('#logout').onclick=()=>{localStorage.removeItem('og_admin');location.reload()};
+document.querySelectorAll('.sides button').forEach(b=>b.onclick=()=>{side=b.dataset.s;document.querySelectorAll('.sides button').forEach(x=>x.classList.toggle('on',x===b))});
+['dsl','dt1','dt2'].forEach(id=>{const el=$('#'+id);el.value=localStorage.getItem('og_'+id)||'';el.oninput=()=>localStorage.setItem('og_'+id,el.value)});
+$('#fill').onclick=()=>{
+  const e=parseFloat($('#entry').value),a=parseFloat($('#dsl').value),b=parseFloat($('#dt1').value),c=parseFloat($('#dt2').value);
+  if(!(e>0&&a>0&&b>0&&c>0)){say('Enter entry and your three distances first','err');return}
+  const k=side==='SELL'?1:-1;
+  $('#sl').value=(e+k*a).toFixed(2);$('#tp1').value=(e-k*b).toFixed(2);$('#tp2').value=(e-k*c).toFixed(2);say('');
+};
+$('#clear').onclick=()=>{['entry','sl','tp1','tp2','note'].forEach(i=>$('#'+i).value='');say('');$('#entry').focus()};
+$('#send').onclick=async()=>{
+  const b={side,entry:$('#entry').value,sl:$('#sl').value,tp1:$('#tp1').value,tp2:$('#tp2').value,note:$('#note').value};
+  const sum=`${side} @ ${b.entry}\nSL ${b.sl} | TP1 ${b.tp1} | TP2 ${b.tp2}\n\nSend to app and Telegram?`;
+  if(!confirm(sum))return;
+  $('#send').disabled=true;say('Sending...');
+  try{const r=await api('/api/signal',b);say(r.telegram?'Sent to app and Telegram.':'Saved in app, but Telegram failed - check bot/chat settings.',r.telegram?'ok':'err');if(r.telegram){$('#clear').click();say('Sent to app and Telegram.','ok')}recent()}
+  catch(e){say(e.message,'err')}
+  $('#send').disabled=false;
+};
+async function recent(){
+  try{const r=await fetch(API+'/api/signals',{cache:'no-store'});const d=await r.json();
+  $('#recent').innerHTML=(d.signals||[]).slice(0,8).map(s=>`<div class="item"><div class="h"><span>${s.side} @ ${Number(s.entry).toFixed(2)}</span><span>${s.status}</span></div><div class="b">${['tp1','tp2','sl','closed','cancelled'].map(x=>`<button data-id="${s.id}" data-st="${x}">${x.toUpperCase()}</button>`).join('')}</div></div>`).join('')||'<p style="font-size:13px;color:#5B6270">No signals yet.</p>';
+  document.querySelectorAll('#recent button').forEach(b=>b.onclick=async()=>{if(!confirm('Mark as '+b.dataset.st.toUpperCase()+' and post to Telegram?'))return;try{await api('/api/status',{id:b.dataset.id,status:b.dataset.st});say('Status updated.','ok');recent()}catch(e){say(e.message,'err')}})}catch(e){}
+}
+if(key)unlock(key);
+</script></body></html>
