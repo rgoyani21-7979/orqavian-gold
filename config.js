@@ -1,2 +1,2 @@
-// Set after the backend is deployed, e.g. window.ORQ_API = 'https://orqavian-gold.YOURNAME.workers.dev';
-window.ORQ_API = '';
+// Backend address for Orqavian Gold signals
+window.ORQ_API = 'https://orqavian-gold.rgoyani21.workers.dev';
